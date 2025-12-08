@@ -824,11 +824,15 @@
             const [filterValue, setFilterValue] = useState('');
             const [animationDuration, setAnimationDuration] = useState(1000);
             const [chartTitle, setChartTitle] = useState('数据可视化图表');
+            const [xAxisLabel, setXAxisLabel] = useState('X轴');
+            const [yAxisLabel, setYAxisLabel] = useState('Y轴');
             const [primaryColor, setPrimaryColor] = useState('#667eea');
             const [showGrid, setShowGrid] = useState(true);
             const [showLegend, setShowLegend] = useState(true);
             const [pointSize, setPointSize] = useState(5);
             const [lineWidth, setLineWidth] = useState(2);
+            const [hideSpines, setHideSpines] = useState(false);
+            const [moveSpines, setMoveSpines] = useState(false);
             const [isLoading, setIsLoading] = useState(false);
 
             const chartRef = useRef(null);
@@ -853,7 +857,7 @@
                 '#718096', '#a0aec0', '#2d3748', '#1a202c', '#ffffff'
             ];
 
-            // Sample Data Templates
+            // Sample Data Templates - Including Chapter 6 Examples
             const dataTemplates = [
                 {
                     name: '销售数据',
@@ -869,6 +873,42 @@
                     name: '产品评分',
                     labels: ['产品A', '产品B', '产品C', '产品D', '产品E'],
                     data: [4.5, 3.8, 4.2, 4.8, 3.5]
+                },
+                {
+                    name: '深圳市24小时风速(实例1)',
+                    labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '24:00'],
+                    data: [7, 9, 11, 14, 8, 15, 22, 11, 10, 11, 11, 13, 8],
+                    chartType: 'line',
+                    color: '#FF9900',
+                    title: '深圳市24小时的平均风速',
+                    xAxis: '时间（h）',
+                    yAxis: '平均风速(km/h)'
+                },
+                {
+                    name: '深圳市24小时风速(实例2-隐藏轴脊)',
+                    labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '24:00'],
+                    data: [7, 9, 11, 14, 8, 15, 22, 11, 10, 11, 11, 13, 8],
+                    chartType: 'line',
+                    color: '#FF9900',
+                    title: '深圳市24小时的平均风速(隐藏部分轴脊)',
+                    xAxis: '时间（h）',
+                    yAxis: '平均风速(km/h)',
+                    hideSpines: true
+                },
+                {
+                    name: '正弦余弦函数(实例3)',
+                    labels: ['-2π', '-3π/2', '-π', '-π/2', '0', 'π/2', 'π', '3π/2', '2π'],
+                    data: [0, 1, 0, -1, 0, 1, 0, -1, 0],
+                    chartType: 'line',
+                    color: '#667eea',
+                    title: '正弦与余弦曲线',
+                    xAxis: 'x',
+                    yAxis: 'y',
+                    sinData: [0, 1, 0, -1, 0, 1, 0, -1, 0],
+                    cosData: [-0, 1, 0, -1, 0, 1, 0, -1, 0],
+                    isMultiDataset: true,
+                    hideSpines: true,
+                    moveSpines: true
                 }
             ];
 
@@ -968,21 +1008,63 @@
 
             // Apply Data Template
             const applyTemplate = (template) => {
-                const newData = {
-                    labels: template.labels,
-                    datasets: [{
-                        label: template.name,
-                        data: template.data,
-                        backgroundColor: `rgba(102, 126, 234, 0.2)`,
-                        borderColor: primaryColor,
-                        borderWidth: lineWidth,
-                        pointRadius: pointSize,
-                        pointHoverRadius: pointSize + 2,
-                        tension: 0.4
-                    }]
-                };
+                let newData;
+                
+                if (template.isMultiDataset) {
+                    // Handle multi-dataset charts (sin/cos)
+                    newData = {
+                        labels: template.labels,
+                        datasets: [
+                            {
+                                label: '正弦曲线',
+                                data: template.sinData,
+                                backgroundColor: `rgba(102, 126, 234, 0.2)`,
+                                borderColor: '#667eea',
+                                borderWidth: lineWidth,
+                                pointRadius: pointSize,
+                                pointHoverRadius: pointSize + 2,
+                                tension: 0.4
+                            },
+                            {
+                                label: '余弦曲线',
+                                data: template.cosData,
+                                backgroundColor: `rgba(240, 147, 251, 0.2)`,
+                                borderColor: '#f093fb',
+                                borderWidth: lineWidth,
+                                pointRadius: pointSize,
+                                pointHoverRadius: pointSize + 2,
+                                tension: 0.4
+                            }
+                        ]
+                    };
+                } else {
+                    // Handle single dataset charts
+                    const chartColor = template.color || primaryColor;
+                    newData = {
+                        labels: template.labels,
+                        datasets: [{
+                            label: template.name,
+                            data: template.data,
+                            backgroundColor: template.chartType === 'line' ? `${chartColor}20` : chartColor,
+                            borderColor: chartColor,
+                            borderWidth: lineWidth,
+                            pointRadius: pointSize,
+                            pointHoverRadius: pointSize + 2,
+                            tension: 0.4
+                        }]
+                    };
+                }
+                
                 setData(newData);
-                setChartTitle(template.name);
+                setChartTitle(template.title || template.name);
+                setChartType(template.chartType || 'line');
+                
+                if (template.xAxis) setXAxisLabel(template.xAxis);
+                if (template.yAxis) setYAxisLabel(template.yAxis);
+                if (template.color) setPrimaryColor(template.color);
+                if (template.hideSpines !== undefined) setHideSpines(template.hideSpines);
+                if (template.moveSpines !== undefined) setMoveSpines(template.moveSpines);
+                
                 showToast(`已应用模板: ${template.name}`, 'success');
             };
 
@@ -1035,8 +1117,16 @@
                         plugins: {
                             ...chartOptions.plugins,
                             legend: {
-                                ...chartOptions.plugins.legend,
-                                display: showLegend && (['pie', 'doughnut', 'polarArea'].includes(chartType))
+                                display: showLegend && (['pie', 'doughnut', 'polarArea'].includes(chartType) || data.datasets.length > 1),
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        size: 14,
+                                        weight: '500'
+                                    },
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
                             },
                             title: {
                                 display: true,
@@ -1046,22 +1136,137 @@
                                     weight: 'bold'
                                 },
                                 padding: 20
+                            },
+                            // Custom plugin for spine manipulation
+                            beforeDraw: function(chart) {
+                                if (hideSpines && chart.ctx && chart.scales) {
+                                    const ctx = chart.ctx;
+                                    const xAxis = chart.scales.x;
+                                    const yAxis = chart.scales.y;
+                                    
+                                    if (xAxis && yAxis) {
+                                        ctx.save();
+                                        
+                                        // Hide top and right spines
+                                        if (hideSpines) {
+                                            // Clear top border
+                                            ctx.strokeStyle = 'transparent';
+                                            ctx.lineWidth = 0;
+                                            ctx.beginPath();
+                                            ctx.moveTo(xAxis.left, yAxis.top);
+                                            ctx.lineTo(xAxis.right, yAxis.top);
+                                            ctx.stroke();
+                                            
+                                            // Clear right border  
+                                            ctx.beginPath();
+                                            ctx.moveTo(xAxis.right, yAxis.top);
+                                            ctx.lineTo(xAxis.right, yAxis.bottom);
+                                            ctx.stroke();
+                                        }
+                                        
+                                        ctx.restore();
+                                    }
+                                }
                             }
                         },
                         scales: ['line', 'bar', 'scatter', 'bubble'].includes(chartType) ? {
                             x: {
                                 display: true,
+                                title: {
+                                    display: true,
+                                    text: xAxisLabel,
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
                                 grid: {
-                                    display: showGrid
+                                    display: showGrid,
+                                    drawBorder: !hideSpines
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 0
                                 }
                             },
                             y: {
                                 display: true,
+                                title: {
+                                    display: true,
+                                    text: yAxisLabel,
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
                                 grid: {
-                                    display: showGrid
+                                    display: showGrid,
+                                    drawBorder: !hideSpines
                                 }
                             }
-                        } : undefined
+                        } : undefined,
+                        plugins: {
+                            ...chartOptions.plugins,
+                            legend: {
+                                display: showLegend && (['pie', 'doughnut', 'polarArea'].includes(chartType) || data.datasets.length > 1),
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        size: 14,
+                                        weight: '500'
+                                    },
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: chartTitle,
+                                font: {
+                                    size: 18,
+                                    weight: 'bold'
+                                },
+                                padding: 20
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 12
+                                },
+                                padding: 12,
+                                cornerRadius: 8,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += context.parsed.y.toFixed(2);
+                                        return label;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                zoom: {
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'xy',
+                                },
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy',
+                                }
+                            }
+                        }
                     }
                 };
 
@@ -1102,11 +1307,15 @@
             const resetSettings = () => {
                 setChartType('line');
                 setChartTitle('数据可视化图表');
+                setXAxisLabel('X轴');
+                setYAxisLabel('Y轴');
                 setPrimaryColor('#667eea');
                 setShowGrid(true);
                 setShowLegend(true);
                 setPointSize(5);
                 setLineWidth(2);
+                setHideSpines(false);
+                setMoveSpines(false);
                 setAnimationDuration(1000);
                 setFilterValue('');
                 showToast('设置已重置', 'info');
@@ -1241,6 +1450,24 @@
                                         />
                                     </div>
                                     <div className="form-group">
+                                        <label className="form-label">X轴标签</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={xAxisLabel}
+                                            onChange={(e) => setXAxisLabel(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Y轴标签</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={yAxisLabel}
+                                            onChange={(e) => setYAxisLabel(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-group">
                                         <label className="form-label">数据筛选</label>
                                         <input
                                             type="text"
@@ -1338,6 +1565,30 @@
                                             显示图例
                                         </label>
                                     </div>
+                                    {['line', 'bar', 'scatter', 'bubble'].includes(chartType) && (
+                                        <>
+                                            <div className="form-group">
+                                                <label className="form-label">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={hideSpines}
+                                                        onChange={(e) => setHideSpines(e.target.checked)}
+                                                    />
+                                                    隐藏部分轴脊（上、右轴脊）
+                                                </label>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={moveSpines}
+                                                        onChange={(e) => setMoveSpines(e.target.checked)}
+                                                    />
+                                                    移动轴脊到原点
+                                                </label>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Actions */}
