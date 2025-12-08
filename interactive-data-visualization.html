@@ -909,6 +909,26 @@
                     isMultiDataset: true,
                     hideSpines: true,
                     moveSpines: true
+                },
+                {
+                    name: '散点图示例',
+                    labels: ['数据点1', '数据点2', '数据点3', '数据点4', '数据点5', '数据点6', '数据点7', '数据点8'],
+                    data: [23, 45, 56, 78, 32, 67, 89, 41],
+                    chartType: 'scatter',
+                    color: '#4299e1',
+                    title: '散点图数据分布',
+                    xAxis: 'X轴数值',
+                    yAxis: 'Y轴数值'
+                },
+                {
+                    name: '气泡图示例',
+                    labels: ['气泡1', '气泡2', '气泡3', '气泡4', '气泡5', '气泡6'],
+                    data: [15, 28, 42, 35, 51, 23],
+                    chartType: 'bubble',
+                    color: '#f6ad55',
+                    title: '气泡图三维数据展示',
+                    xAxis: 'X轴位置',
+                    yAxis: 'Y轴位置'
                 }
             ];
 
@@ -1065,6 +1085,11 @@
                 if (template.hideSpines !== undefined) setHideSpines(template.hideSpines);
                 if (template.moveSpines !== undefined) setMoveSpines(template.moveSpines);
                 
+                // Special handling for scatter and bubble charts
+                if (template.chartType === 'scatter' || template.chartType === 'bubble') {
+                    setChartType(template.chartType);
+                }
+                
                 showToast(`已应用模板: ${template.name}`, 'success');
             };
 
@@ -1073,13 +1098,26 @@
                 if (!filterValue) return data;
 
                 const filteredLabels = [];
-                const filteredData = [];
+                const filteredDatasets = [];
 
-                data.labels.forEach((label, index) => {
-                    if (label.toLowerCase().includes(filterValue.toLowerCase())) {
-                        filteredLabels.push(label);
-                        filteredData.push(data.datasets[0].data[index]);
-                    }
+                data.datasets.forEach((dataset, datasetIndex) => {
+                    const filteredData = [];
+                    
+                    data.labels.forEach((label, index) => {
+                        if (label.toLowerCase().includes(filterValue.toLowerCase())) {
+                            if (datasetIndex === 0) {
+                                filteredLabels.push(label);
+                            }
+                            if (dataset.data[index] !== undefined) {
+                                filteredData.push(dataset.data[index]);
+                            }
+                        }
+                    });
+                    
+                    filteredDatasets.push({
+                        ...dataset,
+                        data: filteredData
+                    });
                 });
 
                 if (filteredLabels.length === 0) {
@@ -1089,12 +1127,57 @@
 
                 return {
                     labels: filteredLabels,
-                    datasets: [{
-                        ...data.datasets[0],
-                        data: filteredData
-                    }]
+                    datasets: filteredDatasets
                 };
             }, [data, filterValue]);
+
+            // Validate and prepare data for specific chart types
+            const validateChartData = (chartData, type) => {
+                if (!chartData || !chartData.datasets || chartData.datasets.length === 0) {
+                    showToast('数据格式错误，请检查数据源', 'error');
+                    return null;
+                }
+
+                const validatedData = JSON.parse(JSON.stringify(chartData));
+
+                if (type === 'scatter' || type === 'bubble') {
+                    validatedData.datasets = validatedData.datasets.map(dataset => {
+                        if (!Array.isArray(dataset.data)) {
+                            showToast('散点图/气泡图数据格式错误', 'error');
+                            return null;
+                        }
+                        
+                        return {
+                            ...dataset,
+                            data: dataset.data.map((point, index) => {
+                                if (type === 'scatter') {
+                                    if (typeof point === 'object' && point.x !== undefined && point.y !== undefined) {
+                                        return point;
+                                    } else if (typeof point === 'number') {
+                                        return {
+                                            x: index * 10 + Math.random() * 5,
+                                            y: point
+                                        };
+                                    }
+                                } else if (type === 'bubble') {
+                                    if (typeof point === 'object' && point.x !== undefined && point.y !== undefined && point.r !== undefined) {
+                                        return point;
+                                    } else if (typeof point === 'number') {
+                                        return {
+                                            x: index * 10 + Math.random() * 5,
+                                            y: point,
+                                            r: Math.abs(point) / 5 + 5
+                                        };
+                                    }
+                                }
+                                return { x: 0, y: 0, r: 5 };
+                            }).filter(point => point !== null)
+                        };
+                    }).filter(dataset => dataset !== null);
+                }
+
+                return validatedData;
+            };
 
             // Update Chart
             const updateChart = useCallback(() => {
@@ -1105,19 +1188,74 @@
                 }
 
                 const filteredData = filterData();
+                const validatedData = validateChartData(filteredData, chartType);
+                
+                if (!validatedData) {
+                    return;
+                }
+
+                let chartData = JSON.parse(JSON.stringify(validatedData));
+                
+                if (chartType === 'scatter') {
+                    // Convert to scatter plot format
+                    chartData.datasets = chartData.datasets.map(dataset => ({
+                        ...dataset,
+                        data: dataset.data.map((point, index) => {
+                            if (typeof point === 'object' && point.x !== undefined && point.y !== undefined) {
+                                return point;
+                            } else if (typeof point === 'number') {
+                                return {
+                                    x: index * 10 + Math.random() * 5,
+                                    y: point
+                                };
+                            }
+                            return { x: index, y: point };
+                        }),
+                        backgroundColor: dataset.backgroundColor || `${primaryColor}80`,
+                        borderColor: dataset.borderColor || primaryColor,
+                        pointRadius: pointSize,
+                        pointHoverRadius: pointSize + 2,
+                        showLine: false
+                    }));
+                } else if (chartType === 'bubble') {
+                    // Convert to bubble chart format
+                    chartData.datasets = chartData.datasets.map(dataset => ({
+                        ...dataset,
+                        data: dataset.data.map((point, index) => {
+                            if (typeof point === 'object' && point.x !== undefined && point.y !== undefined && point.r !== undefined) {
+                                return point;
+                            } else if (typeof point === 'number') {
+                                return {
+                                    x: index * 10 + Math.random() * 5,
+                                    y: point,
+                                    r: Math.max(5, Math.abs(point) / 5 + 5)
+                                };
+                            }
+                            return { x: index, y: point, r: 5 };
+                        }),
+                        backgroundColor: dataset.backgroundColor || `${primaryColor}60`,
+                        borderColor: dataset.borderColor || primaryColor,
+                        borderWidth: lineWidth
+                    }));
+                }
+
                 const config = {
                     type: chartType,
-                    data: filteredData,
+                    data: chartData,
                     options: {
-                        ...chartOptions,
+                        responsive: true,
+                        maintainAspectRatio: false,
                         animation: {
-                            ...chartOptions.animation,
-                            duration: animationDuration
+                            duration: animationDuration,
+                            easing: 'easeInOutQuart'
+                        },
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
                         },
                         plugins: {
-                            ...chartOptions.plugins,
                             legend: {
-                                display: showLegend && (['pie', 'doughnut', 'polarArea'].includes(chartType) || data.datasets.length > 1),
+                                display: showLegend && (['pie', 'doughnut', 'polarArea'].includes(chartType) || chartData.datasets.length > 1),
                                 position: 'top',
                                 labels: {
                                     font: {
@@ -1137,6 +1275,50 @@
                                 },
                                 padding: 20
                             },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 12
+                                },
+                                padding: 12,
+                                cornerRadius: 8,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (chartType === 'bubble') {
+                                            label += `(X: ${context.parsed.x?.toFixed(2)}, Y: ${context.parsed.y?.toFixed(2)}, R: ${context.raw?.r?.toFixed(2)})`;
+                                        } else if (chartType === 'scatter') {
+                                            label += `(X: ${context.parsed.x?.toFixed(2)}, Y: ${context.parsed.y?.toFixed(2)})`;
+                                        } else {
+                                            label += context.parsed.y?.toFixed(2) || context.raw;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                zoom: {
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'xy',
+                                },
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy',
+                                }
+                            },
                             // Custom plugin for spine manipulation
                             beforeDraw: function(chart) {
                                 if (hideSpines && chart.ctx && chart.scales) {
@@ -1149,7 +1331,6 @@
                                         
                                         // Hide top and right spines
                                         if (hideSpines) {
-                                            // Clear top border
                                             ctx.strokeStyle = 'transparent';
                                             ctx.lineWidth = 0;
                                             ctx.beginPath();
@@ -1157,7 +1338,6 @@
                                             ctx.lineTo(xAxis.right, yAxis.top);
                                             ctx.stroke();
                                             
-                                            // Clear right border  
                                             ctx.beginPath();
                                             ctx.moveTo(xAxis.right, yAxis.top);
                                             ctx.lineTo(xAxis.right, yAxis.bottom);
@@ -1204,90 +1384,54 @@
                                     drawBorder: !hideSpines
                                 }
                             }
-                        } : undefined,
-                        plugins: {
-                            ...chartOptions.plugins,
-                            legend: {
-                                display: showLegend && (['pie', 'doughnut', 'polarArea'].includes(chartType) || data.datasets.length > 1),
-                                position: 'top',
-                                labels: {
-                                    font: {
-                                        size: 14,
-                                        weight: '500'
-                                    },
-                                    usePointStyle: true,
-                                    padding: 15
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: chartTitle,
-                                font: {
-                                    size: 18,
-                                    weight: 'bold'
-                                },
-                                padding: 20
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                titleFont: {
-                                    size: 14,
-                                    weight: 'bold'
-                                },
-                                bodyFont: {
-                                    size: 12
-                                },
-                                padding: 12,
-                                cornerRadius: 8,
-                                displayColors: true,
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        label += context.parsed.y.toFixed(2);
-                                        return label;
-                                    }
-                                }
-                            },
-                            zoom: {
-                                zoom: {
-                                    wheel: {
-                                        enabled: true,
-                                    },
-                                    pinch: {
-                                        enabled: true
-                                    },
-                                    mode: 'xy',
-                                },
-                                pan: {
-                                    enabled: true,
-                                    mode: 'xy',
-                                }
-                            }
-                        }
+                        } : undefined
                     }
                 };
 
-                // Update colors
-                if (!['pie', 'doughnut', 'polarArea'].includes(chartType)) {
-                    config.data.datasets[0].backgroundColor = `${primaryColor}20`;
-                    config.data.datasets[0].borderColor = primaryColor;
-                } else {
-                    const colors = data.labels.map((_, index) => 
-                        colorSchemes[index % colorSchemes.length]
-                    );
-                    config.data.datasets[0].backgroundColor = colors;
-                    config.data.datasets[0].borderColor = '#fff';
-                }
+                // Update colors for each dataset
+                config.data.datasets.forEach((dataset, index) => {
+                    if (!['pie', 'doughnut', 'polarArea'].includes(chartType)) {
+                        if (chartType === 'scatter') {
+                            dataset.backgroundColor = `${primaryColor}80`;
+                            dataset.borderColor = primaryColor;
+                        } else if (chartType === 'bubble') {
+                            dataset.backgroundColor = `${primaryColor}60`;
+                            dataset.borderColor = primaryColor;
+                        } else {
+                            dataset.backgroundColor = `${primaryColor}20`;
+                            dataset.borderColor = primaryColor;
+                        }
+                    } else {
+                        const colors = data.labels.map((_, colorIndex) => 
+                            colorSchemes[colorIndex % colorSchemes.length]
+                        );
+                        dataset.backgroundColor = colors;
+                        dataset.borderColor = '#fff';
+                    }
+                });
 
-                // Update line/bar chart specific properties
-                if (['line', 'scatter', 'bubble'].includes(chartType)) {
-                    config.data.datasets[0].pointRadius = pointSize;
-                    config.data.datasets[0].pointHoverRadius = pointSize + 2;
-                    config.data.datasets[0].borderWidth = lineWidth;
-                }
+                // Update chart type specific properties
+                config.data.datasets.forEach(dataset => {
+                    if (['line', 'scatter', 'bubble'].includes(chartType)) {
+                        dataset.pointRadius = pointSize;
+                        dataset.pointHoverRadius = pointSize + 2;
+                        dataset.borderWidth = lineWidth;
+                    }
+                    
+                    // Special updates for scatter and bubble
+                    if (chartType === 'scatter') {
+                        dataset.data = dataset.data.map((point, index) => ({
+                            x: point.x || (index * 10 + Math.random() * 5),
+                            y: point.y || point
+                        }));
+                    } else if (chartType === 'bubble') {
+                        dataset.data = dataset.data.map((point, index) => ({
+                            x: point.x || (index * 10 + Math.random() * 5),
+                            y: point.y || point,
+                            r: point.r || (Math.abs(point.y || point) / 5 + 5)
+                        }));
+                    }
+                });
 
                 chartInstance.current = new Chart(chartRef.current, config);
             }, [chartType, data, chartOptions, chartTitle, primaryColor, showGrid, showLegend, pointSize, lineWidth, animationDuration, filterData]);
@@ -1321,12 +1465,45 @@
                 showToast('设置已重置', 'info');
             };
 
+            // Browser compatibility check
+            const checkBrowserCompatibility = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                if (!ctx) {
+                    showToast('您的浏览器不支持Canvas，请升级浏览器版本', 'error');
+                    return false;
+                }
+                
+                // Check for Chart.js requirements
+                if (!window.Chart) {
+                    showToast('图表库加载失败，请刷新页面重试', 'error');
+                    return false;
+                }
+                
+                return true;
+            };
+
             // Initialize Chart
             useEffect(() => {
-                updateChart();
+                if (!checkBrowserCompatibility()) {
+                    return;
+                }
+                
+                try {
+                    updateChart();
+                } catch (error) {
+                    console.error('Chart initialization error:', error);
+                    showToast('图表初始化失败，请检查数据格式', 'error');
+                }
+                
                 return () => {
                     if (chartInstance.current) {
-                        chartInstance.current.destroy();
+                        try {
+                            chartInstance.current.destroy();
+                        } catch (error) {
+                            console.error('Chart destruction error:', error);
+                        }
                     }
                 };
             }, [updateChart]);
