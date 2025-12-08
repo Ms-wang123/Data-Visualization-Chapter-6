@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>交互式数据可视化 - 第4章图表样式</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <title>高级交互式数据可视化平台 - GitHub Pages</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -13,532 +19,1798 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --success-color: #48bb78;
+            --warning-color: #f6ad55;
+            --danger-color: #fc8181;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f7fafc;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            color: #333;
+            color: var(--text-primary);
+            line-height: 1.6;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
+        /* Header Styles */
         .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
             text-align: center;
-            color: white;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            min-width: 80px;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
         }
 
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .visualization-grid {
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+            height: calc(100vh - 160px);
         }
 
-        .chart-card {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        /* Control Panel */
+        .control-panel {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-xl);
+            overflow-y: auto;
+            max-height: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-section {
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title i {
+            color: var(--primary-color);
+            font-size: 1rem;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: var(--transition);
+            background: var(--bg-primary);
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
             cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
         }
 
-        .chart-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
         }
 
-        .chart-card.active {
-            border: 3px solid #667eea;
-            transform: scale(1.02);
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+            transform: translateY(-1px);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .btn-full {
+            grid-column: 1 / -1;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .chart-title {
-            font-size: 1.3em;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #333;
-            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
         }
 
-        .chart-description {
-            font-size: 0.9em;
-            color: #666;
-            margin-bottom: 15px;
-            line-height: 1.4;
-        }
-
-        .chart-container {
-            width: 100%;
-            height: 300px;
-            margin-bottom: 15px;
-        }
-
-        .controls {
+        .chart-actions {
             display: flex;
-            gap: 10px;
+            gap: 0.5rem;
             flex-wrap: wrap;
+        }
+
+        .chart-actions button {
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .chart-actions button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
             justify-content: center;
         }
 
-        .control-btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 20px;
-            background: #667eea;
-            color: white;
+        /* Chart Type Selector */
+        .chart-type-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .chart-type-btn {
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--bg-primary);
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9em;
+            transition: var(--transition);
+            text-align: center;
+            font-size: 0.875rem;
+            font-weight: 500;
         }
 
-        .control-btn:hover {
-            background: #5a6fd8;
-            transform: scale(1.05);
+        .chart-type-btn:hover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
-        .control-btn.active {
-            background: #764ba2;
+        .chart-type-btn.active {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
         }
 
-        .data-input {
-            margin-top: 15px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 10px;
-        }
-
-        .input-group {
-            margin-bottom: 10px;
-        }
-
-        .input-group label {
+        .chart-type-btn i {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
         }
 
-        .input-group input {
+        /* File Upload Area */
+        .file-upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            background: var(--bg-secondary);
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
+        }
+
+        .file-upload-area i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        /* Data Table */
+        .data-table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .data-table {
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            font-size: 0.875rem;
+            border-collapse: collapse;
         }
 
-        .slider-container {
-            margin: 15px 0;
+        .data-table th, .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .slider {
+        .data-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        /* Range Slider */
+        .range-slider-container {
+            margin-top: 0.5rem;
+        }
+
+        .range-slider {
             width: 100%;
-            margin: 10px 0;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-color);
+            outline: none;
+            -webkit-appearance: none;
         }
 
-        .color-picker {
-            display: flex;
-            gap: 10px;
-            margin: 10px 0;
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .range-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .range-value {
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Color Picker */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
         }
 
         .color-option {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
             cursor: pointer;
-            border: 2px solid transparent;
-            transition: transform 0.3s ease;
+            border: 3px solid transparent;
+            transition: var(--transition);
+            position: relative;
         }
 
         .color-option:hover {
             transform: scale(1.1);
+            box-shadow: var(--shadow-md);
         }
 
-        .color-option.active {
-            border-color: #333;
+        .color-option.selected {
+            border-color: var(--text-primary);
+            transform: scale(1.1);
         }
 
-        .responsive-info {
-            text-align: center;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 10px;
-            margin-top: 20px;
+        .color-option.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
         }
 
-        @media (max-width: 768px) {
-            .visualization-grid {
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            min-width: 300px;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left-color: var(--success-color);
+        }
+
+        .toast.error {
+            border-left-color: var(--danger-color);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .toast i {
+            font-size: 1.25rem;
+        }
+
+        .toast.success i {
+            color: var(--success-color);
+        }
+
+        .toast.error i {
+            color: var(--danger-color);
+        }
+
+        .toast.warning i {
+            color: var(--warning-color);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .control-panel {
+                max-height: none;
+                order: 2;
+            }
+
+            .chart-container {
+                order: 1;
+                min-height: 500px;
+            }
+
+            .header-stats {
+                display: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .header-content {
+                padding: 1rem;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .chart-container {
+                padding: 1rem;
+            }
+
+            .btn-group {
                 grid-template-columns: 1fr;
             }
-            
+
+            .chart-type-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .color-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
             .header h1 {
-                font-size: 2em;
-            }
-            
-            .controls {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .control-btn {
-                width: 100%;
-                max-width: 200px;
+                font-size: 1.5rem;
             }
         }
 
-        .loading {
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { 
+                transform: translateX(-20px); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateX(0); 
+                opacity: 1; 
+            }
+        }
+
+        /* GitHub Pages Notice */
+        .github-notice {
+            background: rgba(76, 175, 80, 0.1);
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
             text-align: center;
-            padding: 20px;
-            font-size: 1.2em;
-            color: #666;
+            font-size: 0.875rem;
+            color: #2e7d32;
         }
 
-        .animation-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 10px 0;
-        }
-
-        .play-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-        }
-
-        .play-btn:hover {
-            background: #218838;
-        }
-
-        .feature-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .feature-btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 25px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 1em;
-            min-width: 120px;
-        }
-
-        .feature-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-
-        .dark-theme {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: #ecf0f1;
-        }
-
-        .dark-theme .chart-card {
-            background: #2c3e50;
-            color: #ecf0f1;
-        }
-
-        .dark-theme .chart-title {
-            color: #ecf0f1;
-        }
-
-        .dark-theme .chart-description {
-            color: #bdc3c7;
-        }
-
-        .dark-theme .data-input {
-            background: #34495e;
-        }
-
-        .dark-theme .responsive-info {
-            background: rgba(44, 62, 80, 0.9);
-        }
-
-        .help-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .help-content {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 500px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .dark-theme .help-content {
-            background: #2c3e50;
-            color: #ecf0f1;
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            cursor: pointer;
+        .github-notice i {
+            color: #4caf50;
+            margin-right: 0.5rem;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 交互式数据可视化</h1>
-            <p>第4章 - 图表样式和高级可视化技术</p>
-            <p>探索matplotlib的强大功能，体验动态数据交互</p>
-        </div>
+    <div id="root"></div>
 
-        <div class="visualization-grid">
-            <!-- 实例1：图书采购情况 -->
-            <div class="chart-card" id="chart1">
-                <div class="chart-title">📚 实例1：图书采购情况</div>
-                <div class="chart-description">
-                    展示两个地区对不同种类图书的采购情况，支持颜色自定义和动态数据更新
-                </div>
-                <div class="chart-container" id="book-chart"></div>
-                <div class="controls">
-                    <button class="control-btn" onclick="updateBookChart('region1')">地区1数据</button>
-                    <button class="control-btn" onclick="updateBookChart('region2')">地区2数据</button>
-                    <button class="control-btn" onclick="resetBookChart()">重置图表</button>
-                </div>
-                <div class="data-input">
-                    <div class="input-group">
-                        <label>地区1采购数量（家庭、小说、心理、科技、儿童）：</label>
-                        <input type="text" id="region1-data" value="1200,2400,1800,2200,1600">
-                    </div>
-                    <div class="input-group">
-                        <label>地区2采购数量：</label>
-                        <input type="text" id="region2-data" value="1050,2100,1300,1600,1340">
-                    </div>
-                    <button class="control-btn" onclick="updateCustomData()">应用自定义数据</button>
-                </div>
-            </div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
-            <!-- 实例2：汇率走势 -->
-            <div class="chart-card" id="chart2">
-                <div class="chart-title">💱 实例2：美元/人民币汇率走势</div>
-                <div class="chart-description">
-                    比较2017年7月与2019年7月美元/人民币汇率变化，支持线型切换和动画效果
-                </div>
-                <div class="chart-container" id="exchange-chart"></div>
-                <div class="controls">
-                    <button class="control-btn" onclick="updateLineStyle('solid')">实线</button>
-                    <button class="control-btn" onclick="updateLineStyle('dashed')">虚线</button>
-                    <button class="control-btn" onclick="updateLineStyle('dotted')">点线</button>
-                    <div class="animation-controls">
-                        <button class="play-btn" onclick="toggleAnimation()">▶ 播放动画</button>
-                        <input type="range" class="slider" id="animation-speed" min="1" max="10" value="5">
-                    </div>
-                </div>
-            </div>
+        // Toast Notification Component
+        const ToastContainer = () => {
+            const [toasts, setToasts] = useState([]);
 
-            <!-- 实例3：产品销售 -->
-            <div class="chart-card" id="chart3">
-                <div class="chart-title">📈 实例3：产品销售季度分析</div>
-                <div class="chart-description">
-                    展示不同产品各季度的销售额对比，支持标记样式和颜色调整
-                </div>
-                <div class="chart-container" id="sales-chart"></div>
-                <div class="controls">
-                    <button class="control-btn" onclick="updateMarkers('diamond')">菱形标记</button>
-                    <button class="control-btn" onclick="updateMarkers('triangle')">三角形标记</button>
-                    <button class="control-btn" onclick="updateMarkers('square')">方形标记</button>
-                    <div class="color-picker">
-                        <div class="color-option active" style="background-color: #1f77b4;" onclick="setColor('#1f77b4')"></div>
-                        <div class="color-option" style="background-color: #ff7f0e;" onclick="setColor('#ff7f0e')"></div>
-                        <div class="color-option" style="background-color: #2ca02c;" onclick="setColor('#2ca02c')"></div>
-                        <div class="color-option" style="background-color: #d62728;" onclick="setColor('#d62728')"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 实例4：温度走势 -->
-            <div class="chart-card" id="chart4">
-                <div class="chart-title">🌡️ 实例4：未来15天温度走势</div>
-                <div class="chart-description">
-                    显示最高温度和最低温度的变化趋势，支持字体样式和标注位置调整
-                </div>
-                <div class="chart-container" id="temperature-chart"></div>
-                <div class="controls">
-                    <button class="control-btn" onclick="updateFontStyle('normal')">正常字体</button>
-                    <button class="control-btn" onclick="updateFontStyle('bold')">粗体</button>
-                    <button class="control-btn" onclick="updateFontStyle('italic')">斜体</button>
-                    <div class="slider-container">
-                        <label>字体大小：</label>
-                        <input type="range" class="slider" id="font-size" min="10" max="20" value="12">
-                    </div>
-                </div>
-            </div>
-
-            <!-- 实例5：雪花分形 -->
-            <div class="chart-card" id="chart5">
-                <div class="chart-title">❄️ 实例5：科赫雪花分形</div>
-                <div class="chart-description">
-                    展示科赫雪花的分形图案，支持迭代次数调整和颜色填充效果
-                </div>
-                <div class="chart-container" id="snowflake-chart"></div>
-                <div class="controls">
-                    <div class="slider-container">
-                        <label>迭代次数：</label>
-                        <input type="range" class="slider" id="iteration-slider" min="0" max="5" value="2">
-                    </div>
-                    <button class="control-btn" onclick="updateSnowflake()">更新雪花</button>
-                    <div class="color-picker">
-                        <div class="color-option active" style="background-color: #ff6b6b;" onclick="setSnowflakeColor('#ff6b6b')"></div>
-                        <div class="color-option" style="background-color: #4ecdc4;" onclick="setSnowflakeColor('#4ecdc4')"></div>
-                        <div class="color-option" style="background-color: #45b7d1;" onclick="setSnowflakeColor('#45b7d1')"></div>
-                        <div class="color-option" style="background-color: #96ceb4;" onclick="setSnowflakeColor('#96ceb4')"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="responsive-info">
-            <h3>📱 响应式设计特性</h3>
-            <p>此页面采用响应式设计，可在各种设备上完美显示</p>
-            <p>• 移动设备优化布局 • 触摸友好的交互控件 • 自适应图表尺寸</p>
-            <div class="feature-buttons">
-                <button class="feature-btn" onclick="exportData()">📊 导出数据</button>
-                <button class="feature-btn" onclick="toggleTheme()">🌙 切换主题</button>
-                <button class="feature-btn" onclick="showHelp()">❓ 使用帮助</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 帮助模态框 -->
-    <div class="help-modal" id="helpModal">
-        <div class="help-content">
-            <button class="close-btn" onclick="closeHelp()">×</button>
-            <h2>📖 使用帮助</h2>
-            <div class="help-section">
-                <h3>🎯 基本操作</h3>
-                <p><strong>图表交互：</strong></p>
-                <ul>
-                    <li>悬停查看数据详情</li>
-                    <li>点击拖拽平移图表</li>
-                    <li>滚轮缩放图表</li>
-                    <li>双击重置视图</li>
-                </ul>
+            const addToast = useCallback((message, type = 'info') => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, message, type }]);
                 
-                <p><strong>控制面板：</strong></p>
-                <ul>
-                    <li>点击按钮切换不同视图</li>
-                    <li>使用滑块调整参数</li>
-                    <li>选择颜色自定义主题</li>
-                    <li>输入数据实时更新</li>
-                </ul>
-            </div>
-            
-            <div class="help-section">
-                <h3>📱 移动优化</h3>
-                <ul>
-                    <li>触摸手势支持：滑动、缩放</li>
-                    <li>大尺寸触摸按钮</li>
-                    <li>自适应布局</li>
-                    <li>性能优化</li>
-                </ul>
-            </div>
-            
-            <div class="help-section">
-                <h3>🎨 主题功能</h3>
-                <ul>
-                    <li>点击"切换主题"按钮切换明暗模式</li>
-                    <li>使用"导出数据"功能保存图表数据</li>
-                    <li>所有设置自动保存</li>
-                </ul>
-            </div>
-        </div>
-    </div>
+                setTimeout(() => {
+                    setToasts(prev => prev.filter(toast => toast.id !== id));
+                }, 3000);
+            }, []);
 
-    <!-- 帮助模态框 -->
-    <div class="help-modal" id="helpModal">
-        <div class="help-content">
-            <button class="close-btn" onclick="closeHelp()">×</button>
-            <h2>📖 使用帮助</h2>
-            <div class="help-section">
-                <h3>🎯 基本操作</h3>
-                <p><strong>图表交互：</strong></p>
-                <ul>
-                    <li>悬停查看数据详情</li>
-                    <li>点击拖拽平移图表</li>
-                    <li>滚轮缩放图表</li>
-                    <li>双击重置视图</li>
-                </ul>
+            useEffect(() => {
+                window.showToast = addToast;
+            }, [addToast]);
+
+            return (
+                <div className="toast-container">
+                    {toasts.map(toast => (
+                        <div key={toast.id} className={`toast ${toast.type} show`}>
+                            <i className={`fas ${
+                                toast.type === 'success' ? 'fa-check-circle' :
+                                toast.type === 'error' ? 'fa-exclamation-circle' :
+                                toast.type === 'warning' ? 'fa-exclamation-triangle' :
+                                'fa-info-circle'
+                            }`}></i>
+                            <span>{toast.message}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        // Main Application Component
+        const DataVisualizationApp = () => {
+            // GitHub Pages Detection
+            const [isGitHubPages, setIsGitHubPages] = useState(false);
+
+            useEffect(() => {
+                // Check if running on GitHub Pages
+                if (window.location.hostname === 'ms-wang123.github.io' || 
+                    window.location.hostname.includes('github.io')) {
+                    setIsGitHubPages(true);
+                }
+            }, []);
+
+            // State Management
+            const [chartType, setChartType] = useState('line');
+            const [data, setData] = useState({
+                labels: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月'],
+                datasets: [{
+                    label: '销售额（万元）',
+                    data: [65, 59, 80, 81, 56, 55, 40, 75],
+                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    tension: 0.4
+                }]
+            });
+            const [chartOptions, setChartOptions] = useState({
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeInOutQuart'
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 14,
+                                weight: '500'
+                            },
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            size: 12
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += context.parsed.y.toFixed(2);
+                                return label;
+                            }
+                        }
+                    },
+                    zoom: {
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'xy',
+                        },
+                        pan: {
+                            enabled: true,
+                            mode: 'xy',
+                        }
+                    }
+                }
+            });
+            const [uploadedFile, setUploadedFile] = useState(null);
+            const [filterValue, setFilterValue] = useState('');
+            const [animationDuration, setAnimationDuration] = useState(1000);
+            const [chartTitle, setChartTitle] = useState('数据可视化图表');
+            const [xAxisLabel, setXAxisLabel] = useState('X轴');
+            const [yAxisLabel, setYAxisLabel] = useState('Y轴');
+            const [primaryColor, setPrimaryColor] = useState('#667eea');
+            const [showGrid, setShowGrid] = useState(true);
+            const [showLegend, setShowLegend] = useState(true);
+            const [pointSize, setPointSize] = useState(5);
+            const [lineWidth, setLineWidth] = useState(2);
+            const [hideSpines, setHideSpines] = useState(false);
+            const [moveSpines, setMoveSpines] = useState(false);
+            const [isLoading, setIsLoading] = useState(false);
+
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            // Chart Types Configuration
+            const chartTypes = [
+                { id: 'line', name: '折线图', icon: 'fa-chart-line' },
+                { id: 'bar', name: '柱状图', icon: 'fa-chart-bar' },
+                { id: 'radar', name: '雷达图', icon: 'fa-chart-area' },
+                { id: 'pie', name: '饼图', icon: 'fa-chart-pie' },
+                { id: 'doughnut', name: '环形图', icon: 'fa-circle-notch' },
+                { id: 'polarArea', name: '极地图', icon: 'fa-compass' },
+                { id: 'scatter', name: '散点图', icon: 'fa-braille' },
+                { id: 'bubble', name: '气泡图', icon: 'fa-circle' }
+            ];
+
+            // Color Schemes
+            const colorSchemes = [
+                '#667eea', '#764ba2', '#f093fb', '#48bb78', '#f6ad55',
+                '#fc8181', '#4299e1', '#9f7aea', '#38b2ac', '#ecc94b',
+                '#718096', '#a0aec0', '#2d3748', '#1a202c', '#ffffff'
+            ];
+
+            // Sample Data Templates - Including Chapter 6 Examples
+            const dataTemplates = [
+                {
+                    name: '销售数据',
+                    labels: ['一月', '二月', '三月', '四月', '五月', '六月'],
+                    data: [65, 59, 80, 81, 56, 55]
+                },
+                {
+                    name: '用户增长',
+                    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                    data: [1000, 1500, 2300, 3100]
+                },
+                {
+                    name: '产品评分',
+                    labels: ['产品A', '产品B', '产品C', '产品D', '产品E'],
+                    data: [4.5, 3.8, 4.2, 4.8, 3.5]
+                },
+                {
+                    name: '深圳市24小时风速(实例1)',
+                    labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '24:00'],
+                    data: [7, 9, 11, 14, 8, 15, 22, 11, 10, 11, 11, 13, 8],
+                    chartType: 'line',
+                    color: '#FF9900',
+                    title: '深圳市24小时的平均风速',
+                    xAxis: '时间（h）',
+                    yAxis: '平均风速(km/h)'
+                },
+                {
+                    name: '深圳市24小时风速(实例2-隐藏轴脊)',
+                    labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '24:00'],
+                    data: [7, 9, 11, 14, 8, 15, 22, 11, 10, 11, 11, 13, 8],
+                    chartType: 'line',
+                    color: '#FF9900',
+                    title: '深圳市24小时的平均风速(隐藏部分轴脊)',
+                    xAxis: '时间（h）',
+                    yAxis: '平均风速(km/h)',
+                    hideSpines: true
+                },
+                {
+                    name: '正弦余弦函数(实例3)',
+                    labels: ['-2π', '-3π/2', '-π', '-π/2', '0', 'π/2', 'π', '3π/2', '2π'],
+                    data: [0, 1, 0, -1, 0, 1, 0, -1, 0],
+                    chartType: 'line',
+                    color: '#667eea',
+                    title: '正弦与余弦曲线',
+                    xAxis: 'x',
+                    yAxis: 'y',
+                    sinData: [0, 1, 0, -1, 0, 1, 0, -1, 0],
+                    cosData: [-0, 1, 0, -1, 0, 1, 0, -1, 0],
+                    isMultiDataset: true,
+                    hideSpines: true,
+                    moveSpines: true
+                },
+                {
+                    name: '散点图示例',
+                    labels: ['数据点1', '数据点2', '数据点3', '数据点4', '数据点5', '数据点6', '数据点7', '数据点8'],
+                    data: [23, 45, 56, 78, 32, 67, 89, 41],
+                    chartType: 'scatter',
+                    color: '#4299e1',
+                    title: '散点图数据分布',
+                    xAxis: 'X轴数值',
+                    yAxis: 'Y轴数值'
+                },
+                {
+                    name: '气泡图示例',
+                    labels: ['气泡1', '气泡2', '气泡3', '气泡4', '气泡5', '气泡6'],
+                    data: [15, 28, 42, 35, 51, 23],
+                    chartType: 'bubble',
+                    color: '#f6ad55',
+                    title: '气泡图三维数据展示',
+                    xAxis: 'X轴位置',
+                    yAxis: 'Y轴位置'
+                }
+            ];
+
+            // Show Toast on Mount for GitHub Pages
+            useEffect(() => {
+                if (isGitHubPages) {
+                    setTimeout(() => {
+                        showToast('欢迎访问 GitHub Pages 版本！所有功能均可正常使用。', 'success');
+                    }, 1000);
+                }
+            }, [isGitHubPages]);
+
+            // File Upload Handler
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                setIsLoading(true);
+                setUploadedFile(file);
+
+                Papa.parse(file, {
+                    complete: (results) => {
+                        try {
+                            const parsedData = parseCSVData(results.data);
+                            if (parsedData) {
+                                setData(parsedData);
+                                showToast('数据导入成功！', 'success');
+                            }
+                        } catch (error) {
+                            showToast('数据解析失败，请检查文件格式', 'error');
+                        } finally {
+                            setIsLoading(false);
+                        }
+                    },
+                    error: (error) => {
+                        showToast('文件读取失败: ' + error.message, 'error');
+                        setIsLoading(false);
+                    }
+                });
+            };
+
+            // Drag and Drop Handlers
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add('dragover');
+            };
+
+            const handleDragLeave = (e) => {
+                e.currentTarget.classList.remove('dragover');
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
                 
-                <p><strong>控制面板：</strong></p>
-                <ul>
-                    <li>点击按钮切换不同视图</li>
-                    <li>使用滑块调整参数</li>
-                    <li>选择颜色自定义主题</li>
-                    <li>输入数据实时更新</li>
-                </ul>
-            </div>
-            
-            <div class="help-section">
-                <h3>📱 移动优化</h3>
-                <ul>
-                    <li>触摸手势支持：滑动、缩放</li>
-                    <li>大尺寸触摸按钮</li>
-                    <li>自适应布局</li>
-                    <li>性能优化</li>
-                </ul>
-            </div>
-            
-            <div class="help-section">
-                <h3>🎨 主题功能</h3>
-                <ul>
-                    <li>点击"切换主题"按钮切换明暗模式</li>
-                    <li>使用"导出数据"功能保存图表数据</li>
-                    <li>所有设置自动保存</li>
-                </ul>
-            </div>
-        </div>
-    </div>
+                const file = e.dataTransfer.files[0];
+                if (file && (file.type === 'text/csv' || file.type === 'application/vnd.ms-excel')) {
+                    const fakeEvent = { target: { files: [file] } };
+                    handleFileUpload(fakeEvent);
+                } else {
+                    showToast('请上传CSV或Excel文件', 'warning');
+                }
+            };
 
-    <script src="script.js"></script>
+            // CSV Data Parser
+            const parseCSVData = (csvData) => {
+                if (!csvData || csvData.length < 2) return null;
+
+                const headers = csvData[0];
+                const rows = csvData.slice(1).filter(row => row.some(cell => cell));
+
+                if (headers.length < 2) {
+                    showToast('数据格式错误：至少需要两列数据', 'error');
+                    return null;
+                }
+
+                const labels = [];
+                const values = [];
+
+                rows.forEach(row => {
+                    if (row[0] && row[1]) {
+                        labels.push(row[0]);
+                        values.push(parseFloat(row[1]) || 0);
+                    }
+                });
+
+                if (labels.length === 0) {
+                    showToast('没有有效的数据行', 'error');
+                    return null;
+                }
+
+                return {
+                    labels,
+                    datasets: [{
+                        label: headers[1] || '数据',
+                        data: values,
+                        backgroundColor: `rgba(102, 126, 234, 0.2)`,
+                        borderColor: primaryColor,
+                        borderWidth: lineWidth,
+                        pointRadius: pointSize,
+                        pointHoverRadius: pointSize + 2,
+                        tension: 0.4
+                    }]
+                };
+            };
+
+            // Apply Data Template
+            const applyTemplate = (template) => {
+                let newData;
+                
+                if (template.isMultiDataset) {
+                    // Handle multi-dataset charts (sin/cos)
+                    newData = {
+                        labels: template.labels,
+                        datasets: [
+                            {
+                                label: '正弦曲线',
+                                data: template.sinData,
+                                backgroundColor: `rgba(102, 126, 234, 0.2)`,
+                                borderColor: '#667eea',
+                                borderWidth: lineWidth,
+                                pointRadius: pointSize,
+                                pointHoverRadius: pointSize + 2,
+                                tension: 0.4
+                            },
+                            {
+                                label: '余弦曲线',
+                                data: template.cosData,
+                                backgroundColor: `rgba(240, 147, 251, 0.2)`,
+                                borderColor: '#f093fb',
+                                borderWidth: lineWidth,
+                                pointRadius: pointSize,
+                                pointHoverRadius: pointSize + 2,
+                                tension: 0.4
+                            }
+                        ]
+                    };
+                } else {
+                    // Handle single dataset charts
+                    const chartColor = template.color || primaryColor;
+                    newData = {
+                        labels: template.labels,
+                        datasets: [{
+                            label: template.name,
+                            data: template.data,
+                            backgroundColor: template.chartType === 'line' ? `${chartColor}20` : chartColor,
+                            borderColor: chartColor,
+                            borderWidth: lineWidth,
+                            pointRadius: pointSize,
+                            pointHoverRadius: pointSize + 2,
+                            tension: 0.4
+                        }]
+                    };
+                }
+                
+                setData(newData);
+                setChartTitle(template.title || template.name);
+                setChartType(template.chartType || 'line');
+                
+                if (template.xAxis) setXAxisLabel(template.xAxis);
+                if (template.yAxis) setYAxisLabel(template.yAxis);
+                if (template.color) setPrimaryColor(template.color);
+                if (template.hideSpines !== undefined) setHideSpines(template.hideSpines);
+                if (template.moveSpines !== undefined) setMoveSpines(template.moveSpines);
+                
+                // Special handling for scatter and bubble charts
+                if (template.chartType === 'scatter' || template.chartType === 'bubble') {
+                    setChartType(template.chartType);
+                }
+                
+                showToast(`已应用模板: ${template.name}`, 'success');
+            };
+
+            // Filter Data
+            const filterData = useCallback(() => {
+                if (!filterValue) return data;
+
+                const filteredLabels = [];
+                const filteredDatasets = [];
+
+                data.datasets.forEach((dataset, datasetIndex) => {
+                    const filteredData = [];
+                    
+                    data.labels.forEach((label, index) => {
+                        if (label.toLowerCase().includes(filterValue.toLowerCase())) {
+                            if (datasetIndex === 0) {
+                                filteredLabels.push(label);
+                            }
+                            if (dataset.data[index] !== undefined) {
+                                filteredData.push(dataset.data[index]);
+                            }
+                        }
+                    });
+                    
+                    filteredDatasets.push({
+                        ...dataset,
+                        data: filteredData
+                    });
+                });
+
+                if (filteredLabels.length === 0) {
+                    showToast('没有匹配的数据', 'warning');
+                    return data;
+                }
+
+                return {
+                    labels: filteredLabels,
+                    datasets: filteredDatasets
+                };
+            }, [data, filterValue]);
+
+            // Validate and prepare data for specific chart types
+            const validateChartData = (chartData, type) => {
+                if (!chartData || !chartData.datasets || chartData.datasets.length === 0) {
+                    showToast('数据格式错误，请检查数据源', 'error');
+                    return null;
+                }
+
+                const validatedData = JSON.parse(JSON.stringify(chartData));
+
+                if (type === 'scatter' || type === 'bubble') {
+                    validatedData.datasets = validatedData.datasets.map(dataset => {
+                        if (!Array.isArray(dataset.data)) {
+                            showToast('散点图/气泡图数据格式错误', 'error');
+                            return null;
+                        }
+                        
+                        return {
+                            ...dataset,
+                            data: dataset.data.map((point, index) => {
+                                if (type === 'scatter') {
+                                    if (typeof point === 'object' && point.x !== undefined && point.y !== undefined) {
+                                        return point;
+                                    } else if (typeof point === 'number') {
+                                        return {
+                                            x: index * 10 + Math.random() * 5,
+                                            y: point
+                                        };
+                                    }
+                                } else if (type === 'bubble') {
+                                    if (typeof point === 'object' && point.x !== undefined && point.y !== undefined && point.r !== undefined) {
+                                        return point;
+                                    } else if (typeof point === 'number') {
+                                        return {
+                                            x: index * 10 + Math.random() * 5,
+                                            y: point,
+                                            r: Math.abs(point) / 5 + 5
+                                        };
+                                    }
+                                }
+                                return { x: 0, y: 0, r: 5 };
+                            }).filter(point => point !== null)
+                        };
+                    }).filter(dataset => dataset !== null);
+                }
+
+                return validatedData;
+            };
+
+            // Browser compatibility check
+            const checkBrowserCompatibility = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                if (!ctx) {
+                    showToast('您的浏览器不支持Canvas，请升级浏览器版本', 'error');
+                    return false;
+                }
+                
+                // Check for Chart.js requirements
+                if (!window.Chart) {
+                    showToast('图表库加载失败，请刷新页面重试', 'error');
+                    return false;
+                }
+                
+                return true;
+            };
+
+            // Update Chart
+            const updateChart = useCallback(() => {
+                if (!chartRef.current) return;
+
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                const filteredData = filterData();
+                const validatedData = validateChartData(filteredData, chartType);
+                
+                if (!validatedData) {
+                    return;
+                }
+
+                let chartData = JSON.parse(JSON.stringify(validatedData));
+                
+                if (chartType === 'scatter') {
+                    // Convert to scatter plot format
+                    chartData.datasets = chartData.datasets.map(dataset => ({
+                        ...dataset,
+                        data: dataset.data.map((point, index) => {
+                            if (typeof point === 'object' && point.x !== undefined && point.y !== undefined) {
+                                return point;
+                            } else if (typeof point === 'number') {
+                                return {
+                                    x: index * 10 + Math.random() * 5,
+                                    y: point
+                                };
+                            }
+                            return { x: index, y: point };
+                        }),
+                        backgroundColor: dataset.backgroundColor || `${primaryColor}80`,
+                        borderColor: dataset.borderColor || primaryColor,
+                        pointRadius: pointSize,
+                        pointHoverRadius: pointSize + 2,
+                        showLine: false
+                    }));
+                } else if (chartType === 'bubble') {
+                    // Convert to bubble chart format
+                    chartData.datasets = chartData.datasets.map(dataset => ({
+                        ...dataset,
+                        data: dataset.data.map((point, index) => {
+                            if (typeof point === 'object' && point.x !== undefined && point.y !== undefined && point.r !== undefined) {
+                                return point;
+                            } else if (typeof point === 'number') {
+                                return {
+                                    x: index * 10 + Math.random() * 5,
+                                    y: point,
+                                    r: Math.max(5, Math.abs(point) / 5 + 5)
+                                };
+                            }
+                            return { x: index, y: point, r: 5 };
+                        }),
+                        backgroundColor: dataset.backgroundColor || `${primaryColor}60`,
+                        borderColor: dataset.borderColor || primaryColor,
+                        borderWidth: lineWidth
+                    }));
+                }
+
+                const config = {
+                    type: chartType,
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: animationDuration,
+                            easing: 'easeInOutQuart'
+                        },
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                display: showLegend && (['pie', 'doughnut', 'polarArea'].includes(chartType) || chartData.datasets.length > 1),
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        size: 14,
+                                        weight: '500'
+                                    },
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: chartTitle,
+                                font: {
+                                    size: 18,
+                                    weight: 'bold'
+                                },
+                                padding: 20
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 12
+                                },
+                                padding: 12,
+                                cornerRadius: 8,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (chartType === 'bubble') {
+                                            label += `(X: ${context.parsed.x?.toFixed(2)}, Y: ${context.parsed.y?.toFixed(2)}, R: ${context.raw?.r?.toFixed(2)})`;
+                                        } else if (chartType === 'scatter') {
+                                            label += `(X: ${context.parsed.x?.toFixed(2)}, Y: ${context.parsed.y?.toFixed(2)})`;
+                                        } else {
+                                            label += context.parsed.y?.toFixed(2) || context.raw;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                zoom: {
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'xy',
+                                },
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy',
+                                }
+                            },
+                            // Custom plugin for spine manipulation
+                            beforeDraw: function(chart) {
+                                if (hideSpines && chart.ctx && chart.scales) {
+                                    const ctx = chart.ctx;
+                                    const xAxis = chart.scales.x;
+                                    const yAxis = chart.scales.y;
+                                    
+                                    if (xAxis && yAxis) {
+                                        ctx.save();
+                                        
+                                        // Hide top and right spines
+                                        if (hideSpines) {
+                                            ctx.strokeStyle = 'transparent';
+                                            ctx.lineWidth = 0;
+                                            ctx.beginPath();
+                                            ctx.moveTo(xAxis.left, yAxis.top);
+                                            ctx.lineTo(xAxis.right, yAxis.top);
+                                            ctx.stroke();
+                                            
+                                            ctx.beginPath();
+                                            ctx.moveTo(xAxis.right, yAxis.top);
+                                            ctx.lineTo(xAxis.right, yAxis.bottom);
+                                            ctx.stroke();
+                                        }
+                                        
+                                        ctx.restore();
+                                    }
+                                }
+                            }
+                        },
+                        scales: ['line', 'bar', 'scatter', 'bubble'].includes(chartType) ? {
+                            x: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: xAxisLabel,
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                grid: {
+                                    display: showGrid,
+                                    drawBorder: !hideSpines
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 0
+                                }
+                            },
+                            y: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: yAxisLabel,
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                grid: {
+                                    display: showGrid,
+                                    drawBorder: !hideSpines
+                                }
+                            }
+                        } : undefined
+                    }
+                };
+
+                // Update colors for each dataset
+                config.data.datasets.forEach((dataset, index) => {
+                    if (!['pie', 'doughnut', 'polarArea'].includes(chartType)) {
+                        if (chartType === 'scatter') {
+                            dataset.backgroundColor = `${primaryColor}80`;
+                            dataset.borderColor = primaryColor;
+                        } else if (chartType === 'bubble') {
+                            dataset.backgroundColor = `${primaryColor}60`;
+                            dataset.borderColor = primaryColor;
+                        } else {
+                            dataset.backgroundColor = `${primaryColor}20`;
+                            dataset.borderColor = primaryColor;
+                        }
+                    } else {
+                        const colors = data.labels.map((_, colorIndex) => 
+                            colorSchemes[colorIndex % colorSchemes.length]
+                        );
+                        dataset.backgroundColor = colors;
+                        dataset.borderColor = '#fff';
+                    }
+                });
+
+                // Update chart type specific properties
+                config.data.datasets.forEach(dataset => {
+                    if (['line', 'scatter', 'bubble'].includes(chartType)) {
+                        dataset.pointRadius = pointSize;
+                        dataset.pointHoverRadius = pointSize + 2;
+                        dataset.borderWidth = lineWidth;
+                    }
+                    
+                    // Special updates for scatter and bubble
+                    if (chartType === 'scatter') {
+                        dataset.data = dataset.data.map((point, index) => ({
+                            x: point.x || (index * 10 + Math.random() * 5),
+                            y: point.y || point
+                        }));
+                    } else if (chartType === 'bubble') {
+                        dataset.data = dataset.data.map((point, index) => ({
+                            x: point.x || (index * 10 + Math.random() * 5),
+                            y: point.y || point,
+                            r: point.r || (Math.abs(point.y || point) / 5 + 5)
+                        }));
+                    }
+                });
+
+                chartInstance.current = new Chart(chartRef.current, config);
+                
+                showToast('图表已更新', 'success');
+            }, [chartType, data, chartOptions, chartTitle, primaryColor, showGrid, showLegend, pointSize, lineWidth, hideSpines, moveSpines, animationDuration, filterData, validateChartData]);
+
+            // Export Chart
+            const exportChart = () => {
+                if (!chartRef.current) return;
+
+                const link = document.createElement('a');
+                link.download = `chart_${Date.now()}.png`;
+                link.href = chartRef.current.toDataURL();
+                link.click();
+                showToast('图表已导出', 'success');
+            };
+
+            // Reset Settings
+            const resetSettings = () => {
+                setChartType('line');
+                setChartTitle('数据可视化图表');
+                setXAxisLabel('X轴');
+                setYAxisLabel('Y轴');
+                setPrimaryColor('#667eea');
+                setShowGrid(true);
+                setShowLegend(true);
+                setPointSize(5);
+                setLineWidth(2);
+                setHideSpines(false);
+                setMoveSpines(false);
+                setAnimationDuration(1000);
+                setFilterValue('');
+                showToast('设置已重置', 'info');
+            };
+
+            // Initialize Chart
+            useEffect(() => {
+                if (!checkBrowserCompatibility()) {
+                    return;
+                }
+                
+                try {
+                    updateChart();
+                } catch (error) {
+                    console.error('Chart initialization error:', error);
+                    showToast('图表初始化失败，请检查数据格式', 'error');
+                }
+                
+                return () => {
+                    if (chartInstance.current) {
+                        try {
+                            chartInstance.current.destroy();
+                        } catch (error) {
+                            console.error('Chart destruction error:', error);
+                        }
+                    }
+                };
+            }, [updateChart]);
+
+            return (
+                <div className="app-container">
+                    {/* Header */}
+                    <header className="header">
+                        <div className="header-content">
+                            <div className="logo">
+                                <i className="fas fa-chart-line"></i>
+                                高级交互式数据可视化平台
+                                {isGitHubPages && <span style={{fontSize: '0.6rem', marginLeft: '0.5rem', opacity: 0.7}}>(GitHub Pages)</span>}
+                            </div>
+                            <div className="header-stats">
+                                <div className="stat-item">
+                                    <div className="stat-value">{data.labels.length}</div>
+                                    <div className="stat-label">数据点</div>
+                                </div>
+                                <div className="stat-item">
+                                    <div className="stat-value">{chartTypes.find(t => t.id === chartType)?.name}</div>
+                                    <div className="stat-label">图表类型</div>
+                                </div>
+                                <div className="stat-item">
+                                    <div className="stat-value">{data.datasets[0].data.reduce((a, b) => a + b, 0).toFixed(0)}</div>
+                                    <div className="stat-label">数据总和</div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* GitHub Pages Notice */}
+                    {isGitHubPages && (
+                        <div className="main-content">
+                            <div className="github-notice">
+                                <i className="fas fa-check-circle"></i>
+                                <strong>GitHub Pages 部署成功！</strong> 
+                                <span> 这是部署在 GitHub Pages 上的交互式数据可视化平台，所有功能均可正常使用。</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Main Content */}
+                    <main className="main-content">
+                        <div className="dashboard-grid">
+                            {/* Control Panel */}
+                            <aside className="control-panel">
+                                {/* Data Templates */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-database"></i>
+                                        数据模板
+                                    </h3>
+                                    <div className="btn-group">
+                                        {dataTemplates.slice(0, 6).map((template, index) => (
+                                            <button 
+                                                key={index}
+                                                className="btn btn-secondary"
+                                                onClick={() => applyTemplate(template)}
+                                            >
+                                                {template.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Chart Type Selection */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-chart-pie"></i>
+                                        图表类型
+                                    </h3>
+                                    <div className="chart-type-grid">
+                                        {chartTypes.map(type => (
+                                            <button
+                                                key={type.id}
+                                                className={`chart-type-btn ${chartType === type.id ? 'active' : ''}`}
+                                                onClick={() => setChartType(type.id)}
+                                            >
+                                                <i className={`fas ${type.icon}`}></i>
+                                                {type.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Chart Settings */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-cog"></i>
+                                        图表设置
+                                    </h3>
+                                    <div className="form-group">
+                                        <label className="form-label">图表标题</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={chartTitle}
+                                            onChange={(e) => setChartTitle(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">X轴标签</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={xAxisLabel}
+                                            onChange={(e) => setXAxisLabel(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Y轴标签</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={yAxisLabel}
+                                            onChange={(e) => setYAxisLabel(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">主题颜色</label>
+                                        <div className="color-grid">
+                                            {colorSchemes.map(color => (
+                                                <div
+                                                    key={color}
+                                                    className={`color-option ${primaryColor === color ? 'selected' : ''}`}
+                                                    style={{ backgroundColor: color }}
+                                                    onClick={() => setPrimaryColor(color)}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Style Settings */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-palette"></i>
+                                        样式设置
+                                    </h3>
+                                    <div className="form-group">
+                                        <label className="form-label">动画时长: {animationDuration}ms</label>
+                                        <div className="range-slider-container">
+                                            <input
+                                                type="range"
+                                                className="range-slider"
+                                                min="0"
+                                                max="3000"
+                                                step="100"
+                                                value={animationDuration}
+                                                onChange={(e) => setAnimationDuration(parseInt(e.target.value))}
+                                            />
+                                            <div className="range-value">{animationDuration}ms</div>
+                                        </div>
+                                    </div>
+                                    {['line', 'scatter', 'bubble'].includes(chartType) && (
+                                        <>
+                                            <div className="form-group">
+                                                <label className="form-label">点大小: {pointSize}px</label>
+                                                <div className="range-slider-container">
+                                                    <input
+                                                        type="range"
+                                                        className="range-slider"
+                                                        min="0"
+                                                        max="20"
+                                                        value={pointSize}
+                                                        onChange={(e) => setPointSize(parseInt(e.target.value))}
+                                                    />
+                                                    <div className="range-value">{pointSize}px</div>
+                                                </div>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">线宽: {lineWidth}px</label>
+                                                <div className="range-slider-container">
+                                                    <input
+                                                        type="range"
+                                                        className="range-slider"
+                                                        min="1"
+                                                        max="10"
+                                                        value={lineWidth}
+                                                        onChange={(e) => setLineWidth(parseInt(e.target.value))}
+                                                    />
+                                                    <div className="range-value">{lineWidth}px</div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={showGrid}
+                                                onChange={(e) => setShowGrid(e.target.checked)}
+                                            />
+                                            显示网格线
+                                        </label>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={showLegend}
+                                                onChange={(e) => setShowLegend(e.target.checked)}
+                                            />
+                                            显示图例
+                                        </label>
+                                    </div>
+                                    {['line', 'bar', 'scatter', 'bubble'].includes(chartType) && (
+                                        <>
+                                            <div className="form-group">
+                                                <label className="form-label">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={hideSpines}
+                                                        onChange={(e) => setHideSpines(e.target.checked)}
+                                                    />
+                                                    隐藏部分轴脊（上、右轴脊）
+                                                </label>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={moveSpines}
+                                                        onChange={(e) => setMoveSpines(e.target.checked)}
+                                                    />
+                                                    移动轴脊到原点
+                                                </label>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Actions */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-tools"></i>
+                                        操作
+                                    </h3>
+                                    <div className="btn-group">
+                                        <button className="btn btn-success" onClick={updateChart}>
+                                            <i className="fas fa-sync"></i>
+                                            更新图表
+                                        </button>
+                                        <button className="btn btn-primary" onClick={exportChart}>
+                                            <i className="fas fa-download"></i>
+                                            导出图片
+                                        </button>
+                                        <button className="btn btn-danger btn-full" onClick={resetSettings}>
+                                            <i className="fas fa-undo"></i>
+                                            重置设置
+                                        </button>
+                                    </div>
+                                </div>
+                            </aside>
+
+                            {/* Chart Container */}
+                            <section className="chart-container">
+                                <div className="chart-header">
+                                    <h2 className="chart-title">数据可视化</h2>
+                                    <div className="chart-actions">
+                                        <button onClick={() => chartInstance.current?.resetZoom()}>
+                                            <i className="fas fa-search-minus"></i>
+                                            重置缩放
+                                        </button>
+                                        <button onClick={updateChart}>
+                                            <i className="fas fa-sync"></i>
+                                            刷新
+                                        </button>
+                                        <button onClick={exportChart}>
+                                            <i className="fas fa-download"></i>
+                                            下载
+                                        </button>
+                                        <button onClick={() => window.print()}>
+                                            <i className="fas fa-print"></i>
+                                            打印
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="chart-wrapper">
+                                    {isLoading ? (
+                                        <div className="loading">
+                                            <div className="spinner"></div>
+                                            <p>正在加载数据...</p>
+                                        </div>
+                                    ) : (
+                                        <canvas ref={chartRef}></canvas>
+                                    )}
+                                </div>
+                            </section>
+                        </div>
+                    </main>
+
+                    <ToastContainer />
+                </div>
+            );
+        };
+
+        // Render App
+        ReactDOM.render(<DataVisualizationApp />, document.getElementById('root'));
+    </script>
 </body>
 </html>
