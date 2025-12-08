@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级交互式数据可视化平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --success-color: #48bb78;
+            --warning-color: #f6ad55;
+            --danger-color: #fc8181;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f7fafc;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styles */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            min-width: 80px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+            height: calc(100vh - 160px);
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-xl);
+            overflow-y: auto;
+            max-height: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-section {
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title i {
+            color: var(--primary-color);
+            font-size: 1rem;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: var(--transition);
+            background: var(--bg-primary);
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #f56565;
+            transform: translateY(-1px);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .btn-full {
+            grid-column: 1 / -1;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .chart-actions button {
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .chart-actions button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Chart Type Selector */
+        .chart-type-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .chart-type-btn {
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--bg-primary);
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .chart-type-btn:hover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .chart-type-btn.active {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .chart-type-btn i {
+            display: block;
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* File Upload Area */
+        .file-upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            background: var(--bg-secondary);
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
+        }
+
+        .file-upload-area i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        /* Data Table */
+        .data-table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .data-table {
+            width: 100%;
+            font-size: 0.875rem;
+            border-collapse: collapse;
+        }
+
+        .data-table th, .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        /* Range Slider */
+        .range-slider-container {
+            margin-top: 0.5rem;
+        }
+
+        .range-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-color);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .range-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .range-value {
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Color Picker */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-md);
+        }
+
+        .color-option.selected {
+            border-color: var(--text-primary);
+            transform: scale(1.1);
+        }
+
+        .color-option.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            min-width: 300px;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left-color: var(--success-color);
+        }
+
+        .toast.error {
+            border-left-color: var(--danger-color);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .toast i {
+            font-size: 1.25rem;
+        }
+
+        .toast.success i {
+            color: var(--success-color);
+        }
+
+        .toast.error i {
+            color: var(--danger-color);
+        }
+
+        .toast.warning i {
+            color: var(--warning-color);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .control-panel {
+                max-height: none;
+                order: 2;
+            }
+
+            .chart-container {
+                order: 1;
+                min-height: 500px;
+            }
+
+            .header-stats {
+                display: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .header-content {
+                padding: 1rem;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .chart-container {
+                padding: 1rem;
+            }
+
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-type-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .color-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { 
+                transform: translateX(-20px); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateX(0); 
+                opacity: 1; 
+            }
+        }
+
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mt-3 { margin-top: 1.5rem; }
+        .mb-1 { margin-bottom: 0.5rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .mb-3 { margin-bottom: 1.5rem; }
+        .p-1 { padding: 0.5rem; }
+        .p-2 { padding: 1rem; }
+        .p-3 { padding: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+        // Toast Notification Component
+        const ToastContainer = () => {
+            const [toasts, setToasts] = useState([]);
+
+            const addToast = useCallback((message, type = 'info') => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, message, type }]);
+                
+                setTimeout(() => {
+                    setToasts(prev => prev.filter(toast => toast.id !== id));
+                }, 3000);
+            }, []);
+
+            useEffect(() => {
+                window.showToast = addToast;
+            }, [addToast]);
+
+            return (
+                <div className="toast-container">
+                    {toasts.map(toast => (
+                        <div key={toast.id} className={`toast ${toast.type} show`}>
+                            <i className={`fas ${
+                                toast.type === 'success' ? 'fa-check-circle' :
+                                toast.type === 'error' ? 'fa-exclamation-circle' :
+                                toast.type === 'warning' ? 'fa-exclamation-triangle' :
+                                'fa-info-circle'
+                            }`}></i>
+                            <span>{toast.message}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        // Main Application Component
+        const DataVisualizationApp = () => {
+            // State Management
+            const [chartType, setChartType] = useState('line');
+            const [data, setData] = useState({
+                labels: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月'],
+                datasets: [{
+                    label: '销售额（万元）',
+                    data: [65, 59, 80, 81, 56, 55, 40, 75],
+                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    tension: 0.4
+                }]
+            });
+            const [chartOptions, setChartOptions] = useState({
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeInOutQuart'
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 14,
+                                weight: '500'
+                            },
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            size: 12
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += context.parsed.y.toFixed(2);
+                                return label;
+                            }
+                        }
+                    },
+                    zoom: {
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'xy',
+                        },
+                        pan: {
+                            enabled: true,
+                            mode: 'xy',
+                        }
+                    }
+                }
+            });
+            const [uploadedFile, setUploadedFile] = useState(null);
+            const [filterValue, setFilterValue] = useState('');
+            const [animationDuration, setAnimationDuration] = useState(1000);
+            const [chartTitle, setChartTitle] = useState('数据可视化图表');
+            const [primaryColor, setPrimaryColor] = useState('#667eea');
+            const [showGrid, setShowGrid] = useState(true);
+            const [showLegend, setShowLegend] = useState(true);
+            const [pointSize, setPointSize] = useState(5);
+            const [lineWidth, setLineWidth] = useState(2);
+            const [isLoading, setIsLoading] = useState(false);
+
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            // Chart Types Configuration
+            const chartTypes = [
+                { id: 'line', name: '折线图', icon: 'fa-chart-line' },
+                { id: 'bar', name: '柱状图', icon: 'fa-chart-bar' },
+                { id: 'radar', name: '雷达图', icon: 'fa-chart-area' },
+                { id: 'pie', name: '饼图', icon: 'fa-chart-pie' },
+                { id: 'doughnut', name: '环形图', icon: 'fa-circle-notch' },
+                { id: 'polarArea', name: '极地图', icon: 'fa-compass' },
+                { id: 'scatter', name: '散点图', icon: 'fa-braille' },
+                { id: 'bubble', name: '气泡图', icon: 'fa-circle' }
+            ];
+
+            // Color Schemes
+            const colorSchemes = [
+                '#667eea', '#764ba2', '#f093fb', '#48bb78', '#f6ad55',
+                '#fc8181', '#4299e1', '#9f7aea', '#38b2ac', '#ecc94b',
+                '#718096', '#a0aec0', '#2d3748', '#1a202c', '#ffffff'
+            ];
+
+            // Sample Data Templates
+            const dataTemplates = [
+                {
+                    name: '销售数据',
+                    labels: ['一月', '二月', '三月', '四月', '五月', '六月'],
+                    data: [65, 59, 80, 81, 56, 55]
+                },
+                {
+                    name: '用户增长',
+                    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                    data: [1000, 1500, 2300, 3100]
+                },
+                {
+                    name: '产品评分',
+                    labels: ['产品A', '产品B', '产品C', '产品D', '产品E'],
+                    data: [4.5, 3.8, 4.2, 4.8, 3.5]
+                }
+            ];
+
+            // File Upload Handler
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                setIsLoading(true);
+                setUploadedFile(file);
+
+                Papa.parse(file, {
+                    complete: (results) => {
+                        try {
+                            const parsedData = parseCSVData(results.data);
+                            if (parsedData) {
+                                setData(parsedData);
+                                showToast('数据导入成功！', 'success');
+                            }
+                        } catch (error) {
+                            showToast('数据解析失败，请检查文件格式', 'error');
+                        } finally {
+                            setIsLoading(false);
+                        }
+                    },
+                    error: (error) => {
+                        showToast('文件读取失败: ' + error.message, 'error');
+                        setIsLoading(false);
+                    }
+                });
+            };
+
+            // Drag and Drop Handlers
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add('dragover');
+            };
+
+            const handleDragLeave = (e) => {
+                e.currentTarget.classList.remove('dragover');
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
+                
+                const file = e.dataTransfer.files[0];
+                if (file && (file.type === 'text/csv' || file.type === 'application/vnd.ms-excel')) {
+                    const fakeEvent = { target: { files: [file] } };
+                    handleFileUpload(fakeEvent);
+                } else {
+                    showToast('请上传CSV或Excel文件', 'warning');
+                }
+            };
+
+            // CSV Data Parser
+            const parseCSVData = (csvData) => {
+                if (!csvData || csvData.length < 2) return null;
+
+                const headers = csvData[0];
+                const rows = csvData.slice(1).filter(row => row.some(cell => cell));
+
+                if (headers.length < 2) {
+                    showToast('数据格式错误：至少需要两列数据', 'error');
+                    return null;
+                }
+
+                const labels = [];
+                const values = [];
+
+                rows.forEach(row => {
+                    if (row[0] && row[1]) {
+                        labels.push(row[0]);
+                        values.push(parseFloat(row[1]) || 0);
+                    }
+                });
+
+                if (labels.length === 0) {
+                    showToast('没有有效的数据行', 'error');
+                    return null;
+                }
+
+                return {
+                    labels,
+                    datasets: [{
+                        label: headers[1] || '数据',
+                        data: values,
+                        backgroundColor: `rgba(102, 126, 234, 0.2)`,
+                        borderColor: primaryColor,
+                        borderWidth: lineWidth,
+                        pointRadius: pointSize,
+                        pointHoverRadius: pointSize + 2,
+                        tension: 0.4
+                    }]
+                };
+            };
+
+            // Apply Data Template
+            const applyTemplate = (template) => {
+                const newData = {
+                    labels: template.labels,
+                    datasets: [{
+                        label: template.name,
+                        data: template.data,
+                        backgroundColor: `rgba(102, 126, 234, 0.2)`,
+                        borderColor: primaryColor,
+                        borderWidth: lineWidth,
+                        pointRadius: pointSize,
+                        pointHoverRadius: pointSize + 2,
+                        tension: 0.4
+                    }]
+                };
+                setData(newData);
+                setChartTitle(template.name);
+                showToast(`已应用模板: ${template.name}`, 'success');
+            };
+
+            // Filter Data
+            const filterData = useCallback(() => {
+                if (!filterValue) return data;
+
+                const filteredLabels = [];
+                const filteredData = [];
+
+                data.labels.forEach((label, index) => {
+                    if (label.toLowerCase().includes(filterValue.toLowerCase())) {
+                        filteredLabels.push(label);
+                        filteredData.push(data.datasets[0].data[index]);
+                    }
+                });
+
+                if (filteredLabels.length === 0) {
+                    showToast('没有匹配的数据', 'warning');
+                    return data;
+                }
+
+                return {
+                    labels: filteredLabels,
+                    datasets: [{
+                        ...data.datasets[0],
+                        data: filteredData
+                    }]
+                };
+            }, [data, filterValue]);
+
+            // Update Chart
+            const updateChart = useCallback(() => {
+                if (!chartRef.current) return;
+
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                const filteredData = filterData();
+                const config = {
+                    type: chartType,
+                    data: filteredData,
+                    options: {
+                        ...chartOptions,
+                        animation: {
+                            ...chartOptions.animation,
+                            duration: animationDuration
+                        },
+                        plugins: {
+                            ...chartOptions.plugins,
+                            legend: {
+                                ...chartOptions.plugins.legend,
+                                display: showLegend && (['pie', 'doughnut', 'polarArea'].includes(chartType))
+                            },
+                            title: {
+                                display: true,
+                                text: chartTitle,
+                                font: {
+                                    size: 18,
+                                    weight: 'bold'
+                                },
+                                padding: 20
+                            }
+                        },
+                        scales: ['line', 'bar', 'scatter', 'bubble'].includes(chartType) ? {
+                            x: {
+                                display: true,
+                                grid: {
+                                    display: showGrid
+                                }
+                            },
+                            y: {
+                                display: true,
+                                grid: {
+                                    display: showGrid
+                                }
+                            }
+                        } : undefined
+                    }
+                };
+
+                // Update colors
+                if (!['pie', 'doughnut', 'polarArea'].includes(chartType)) {
+                    config.data.datasets[0].backgroundColor = `${primaryColor}20`;
+                    config.data.datasets[0].borderColor = primaryColor;
+                } else {
+                    const colors = data.labels.map((_, index) => 
+                        colorSchemes[index % colorSchemes.length]
+                    );
+                    config.data.datasets[0].backgroundColor = colors;
+                    config.data.datasets[0].borderColor = '#fff';
+                }
+
+                // Update line/bar chart specific properties
+                if (['line', 'scatter', 'bubble'].includes(chartType)) {
+                    config.data.datasets[0].pointRadius = pointSize;
+                    config.data.datasets[0].pointHoverRadius = pointSize + 2;
+                    config.data.datasets[0].borderWidth = lineWidth;
+                }
+
+                chartInstance.current = new Chart(chartRef.current, config);
+            }, [chartType, data, chartOptions, chartTitle, primaryColor, showGrid, showLegend, pointSize, lineWidth, animationDuration, filterData]);
+
+            // Export Chart
+            const exportChart = () => {
+                if (!chartRef.current) return;
+
+                const link = document.createElement('a');
+                link.download = `chart_${Date.now()}.png`;
+                link.href = chartRef.current.toDataURL();
+                link.click();
+                showToast('图表已导出', 'success');
+            };
+
+            // Reset Settings
+            const resetSettings = () => {
+                setChartType('line');
+                setChartTitle('数据可视化图表');
+                setPrimaryColor('#667eea');
+                setShowGrid(true);
+                setShowLegend(true);
+                setPointSize(5);
+                setLineWidth(2);
+                setAnimationDuration(1000);
+                setFilterValue('');
+                showToast('设置已重置', 'info');
+            };
+
+            // Initialize Chart
+            useEffect(() => {
+                updateChart();
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, [updateChart]);
+
+            return (
+                <div className="app-container">
+                    {/* Header */}
+                    <header className="header">
+                        <div className="header-content">
+                            <div className="logo">
+                                <i className="fas fa-chart-line"></i>
+                                高级交互式数据可视化平台
+                            </div>
+                            <div className="header-stats">
+                                <div className="stat-item">
+                                    <div className="stat-value">{data.labels.length}</div>
+                                    <div className="stat-label">数据点</div>
+                                </div>
+                                <div className="stat-item">
+                                    <div className="stat-value">{chartTypes.find(t => t.id === chartType)?.name}</div>
+                                    <div className="stat-label">图表类型</div>
+                                </div>
+                                <div className="stat-item">
+                                    <div className="stat-value">{data.datasets[0].data.reduce((a, b) => a + b, 0).toFixed(0)}</div>
+                                    <div className="stat-label">数据总和</div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="main-content">
+                        <div className="dashboard-grid">
+                            {/* Control Panel */}
+                            <aside className="control-panel">
+                                {/* File Upload */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-upload"></i>
+                                        数据导入
+                                    </h3>
+                                    <div 
+                                        className="file-upload-area"
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleDrop}
+                                        onClick={() => document.getElementById('file-input').click()}
+                                    >
+                                        <i className="fas fa-cloud-upload-alt"></i>
+                                        <p>拖拽文件到此处或点击选择</p>
+                                        <p style={{fontSize: '0.875rem', color: 'var(--text-secondary)'}}>
+                                            支持 CSV, Excel 格式
+                                        </p>
+                                        <input 
+                                            id="file-input"
+                                            type="file" 
+                                            accept=".csv,.xlsx,.xls"
+                                            style={{display: 'none'}}
+                                            onChange={handleFileUpload}
+                                        />
+                                    </div>
+                                    {uploadedFile && (
+                                        <div className="mt-2" style={{fontSize: '0.875rem', color: 'var(--text-secondary)'}}>
+                                            <i className="fas fa-file"></i> {uploadedFile.name}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Data Templates */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-database"></i>
+                                        数据模板
+                                    </h3>
+                                    <div className="btn-group">
+                                        {dataTemplates.map((template, index) => (
+                                            <button 
+                                                key={index}
+                                                className="btn btn-secondary"
+                                                onClick={() => applyTemplate(template)}
+                                            >
+                                                {template.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Chart Type Selection */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-chart-pie"></i>
+                                        图表类型
+                                    </h3>
+                                    <div className="chart-type-grid">
+                                        {chartTypes.map(type => (
+                                            <button
+                                                key={type.id}
+                                                className={`chart-type-btn ${chartType === type.id ? 'active' : ''}`}
+                                                onClick={() => setChartType(type.id)}
+                                            >
+                                                <i className={`fas ${type.icon}`}></i>
+                                                {type.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Chart Settings */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-cog"></i>
+                                        图表设置
+                                    </h3>
+                                    <div className="form-group">
+                                        <label className="form-label">图表标题</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={chartTitle}
+                                            onChange={(e) => setChartTitle(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">数据筛选</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="输入关键词筛选数据..."
+                                            value={filterValue}
+                                            onChange={(e) => setFilterValue(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">主题颜色</label>
+                                        <div className="color-grid">
+                                            {colorSchemes.map(color => (
+                                                <div
+                                                    key={color}
+                                                    className={`color-option ${primaryColor === color ? 'selected' : ''}`}
+                                                    style={{ backgroundColor: color }}
+                                                    onClick={() => setPrimaryColor(color)}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Style Settings */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-palette"></i>
+                                        样式设置
+                                    </h3>
+                                    <div className="form-group">
+                                        <label className="form-label">动画时长: {animationDuration}ms</label>
+                                        <div className="range-slider-container">
+                                            <input
+                                                type="range"
+                                                className="range-slider"
+                                                min="0"
+                                                max="3000"
+                                                step="100"
+                                                value={animationDuration}
+                                                onChange={(e) => setAnimationDuration(parseInt(e.target.value))}
+                                            />
+                                            <div className="range-value">{animationDuration}ms</div>
+                                        </div>
+                                    </div>
+                                    {['line', 'scatter', 'bubble'].includes(chartType) && (
+                                        <>
+                                            <div className="form-group">
+                                                <label className="form-label">点大小: {pointSize}px</label>
+                                                <div className="range-slider-container">
+                                                    <input
+                                                        type="range"
+                                                        className="range-slider"
+                                                        min="0"
+                                                        max="20"
+                                                        value={pointSize}
+                                                        onChange={(e) => setPointSize(parseInt(e.target.value))}
+                                                    />
+                                                    <div className="range-value">{pointSize}px</div>
+                                                </div>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">线宽: {lineWidth}px</label>
+                                                <div className="range-slider-container">
+                                                    <input
+                                                        type="range"
+                                                        className="range-slider"
+                                                        min="1"
+                                                        max="10"
+                                                        value={lineWidth}
+                                                        onChange={(e) => setLineWidth(parseInt(e.target.value))}
+                                                    />
+                                                    <div className="range-value">{lineWidth}px</div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={showGrid}
+                                                onChange={(e) => setShowGrid(e.target.checked)}
+                                            />
+                                            显示网格线
+                                        </label>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={showLegend}
+                                                onChange={(e) => setShowLegend(e.target.checked)}
+                                            />
+                                            显示图例
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="control-section">
+                                    <h3 className="section-title">
+                                        <i className="fas fa-tools"></i>
+                                        操作
+                                    </h3>
+                                    <div className="btn-group">
+                                        <button className="btn btn-success" onClick={updateChart}>
+                                            <i className="fas fa-sync"></i>
+                                            更新图表
+                                        </button>
+                                        <button className="btn btn-primary" onClick={exportChart}>
+                                            <i className="fas fa-download"></i>
+                                            导出图片
+                                        </button>
+                                        <button className="btn btn-danger btn-full" onClick={resetSettings}>
+                                            <i className="fas fa-undo"></i>
+                                            重置设置
+                                        </button>
+                                    </div>
+                                </div>
+                            </aside>
+
+                            {/* Chart Container */}
+                            <section className="chart-container">
+                                <div className="chart-header">
+                                    <h2 className="chart-title">数据可视化</h2>
+                                    <div className="chart-actions">
+                                        <button onClick={() => chartInstance.current?.resetZoom()}>
+                                            <i className="fas fa-search-minus"></i>
+                                            重置缩放
+                                        </button>
+                                        <button onClick={updateChart}>
+                                            <i className="fas fa-sync"></i>
+                                            刷新
+                                        </button>
+                                        <button onClick={exportChart}>
+                                            <i className="fas fa-download"></i>
+                                            下载
+                                        </button>
+                                        <button onClick={() => window.print()}>
+                                            <i className="fas fa-print"></i>
+                                            打印
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="chart-wrapper">
+                                    {isLoading ? (
+                                        <div className="loading">
+                                            <div className="spinner"></div>
+                                            <p>正在加载数据...</p>
+                                        </div>
+                                    ) : (
+                                        <canvas ref={chartRef}></canvas>
+                                    )}
+                                </div>
+                            </section>
+                        </div>
+                    </main>
+
+                    <ToastContainer />
+                </div>
+            );
+        };
+
+        // Render App
+        ReactDOM.render(<DataVisualizationApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
